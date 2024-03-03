@@ -18,6 +18,7 @@ pub struct KeyPhraseExtractor {
     content_phrases: Vec<Vec<String>>,
     word_freq: HashMap<String, usize>,
     word_deg: HashMap<String, usize>,
+    stop_words: HashSet<String>,
 }
 
 impl KeyPhraseExtractor {
@@ -59,11 +60,13 @@ impl KeyPhraseExtractor {
     /// Arguments:
     ///
     /// * `str`: The string to extract key phrases from.
+    /// * `top_n`: The number of top results
+    /// * `stop_words`: The list of stop words
     ///
     /// Returns:
     ///
     /// A KeyPhraseExtractor struct
-    pub fn new(str: &str, top_n: usize) -> KeyPhraseExtractor {
+    pub fn new(str: &str, top_n: usize, stop_words: Option<HashSet<String>>) -> KeyPhraseExtractor {
         let content_phrases: Vec<Vec<String>> = extract_content_phrases(&String::from(str));
 
         // maps
@@ -79,6 +82,7 @@ impl KeyPhraseExtractor {
             content_phrases,
             word_freq,
             word_deg,
+            stop_words: stop_words.unwrap_or(load_default_stopwords()),
         };
     }
 
@@ -140,7 +144,7 @@ impl KeyPhraseExtractor {
     /// A vector of strings.
     pub fn get_content_words(&self) -> Vec<String> {
         let str = self.message.as_str();
-        let vec = extract_content_words(&extract_words(str));
+        let vec = extract_content_words(&extract_words(str), self.stop_words);
         return vec;
     }
 
@@ -162,7 +166,7 @@ impl KeyPhraseExtractor {
 /// Returns:
 ///
 /// A HashSet of Strings
-fn load_stopwords() -> HashSet<String> {
+fn load_default_stopwords() -> HashSet<String> {
     let stopwords: &str = include_str!("stopwords.txt");
     let mut stop_words: HashSet<String> = HashSet::new();
 
@@ -201,20 +205,18 @@ fn extract_words(input: &str) -> Vec<String> {
 /// Arguments:
 ///
 /// * `words`: A vector of strings, where each string is a word in the text.
+/// * `stop_words`: A hashset of stop words
 ///
 /// Returns:
 ///
 /// A vector of strings.
-fn extract_content_words(words: &Vec<String>) -> Vec<String> {
-    // stopwords
-    let stopwords: HashSet<String> = load_stopwords();
-
+fn extract_content_words(words: &Vec<String>, stop_words: HashSet<String>) -> Vec<String> {
     let mut content_words: Vec<String> = Vec::new();
 
     for word in words {
         // Push word to phrases vec if we hit a stop word
         // and clears the phrase vector.
-        if stopwords.contains(&word.to_lowercase()) {
+        if stop_words.contains(&word.to_lowercase()) {
             continue;
         } else {
             content_words.push(word.to_string());
@@ -233,14 +235,12 @@ fn extract_content_words(words: &Vec<String>) -> Vec<String> {
 /// Arguments:
 ///
 /// * `input`: The input string to extract phrases from
+/// * `stop_words`: A hashset of stop words
 ///
 /// Returns:
 ///
 /// A vector of vectors of strings.
-fn extract_content_phrases(input: &str) -> Vec<Vec<String>> {
-    // stopwords
-    let stopwords: HashSet<String> = load_stopwords();
-
+fn extract_content_phrases(input: &str, stop_words: HashSet<String>) -> Vec<Vec<String>> {
     let mut content_phrases: Vec<Vec<String>> = Vec::new();
 
     // Loop over sentences and then commas
@@ -253,7 +253,7 @@ fn extract_content_phrases(input: &str) -> Vec<Vec<String>> {
             for (i, word) in words.iter().enumerate() {
                 // If word is a stopword, push the phrase, clear, and
                 // move to the next split
-                if stopwords.contains(&word.to_ascii_lowercase()) {
+                if stop_words.contains(&word.to_ascii_lowercase()) {
                     content_phrases.push(content_phrase.clone());
                     content_phrase.clear();
                     continue;
