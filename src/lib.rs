@@ -67,7 +67,8 @@ impl KeyPhraseExtractor {
     ///
     /// A KeyPhraseExtractor struct
     pub fn new(str: &str, top_n: usize, stop_words: Option<HashSet<String>>) -> KeyPhraseExtractor {
-        let content_phrases: Vec<Vec<String>> = extract_content_phrases(&String::from(str));
+        let stop_words = stop_words.unwrap_or_else(load_default_stopwords);
+        let content_phrases: Vec<Vec<String>> = extract_content_phrases(str, &stop_words);
 
         // maps
         let mut word_freq: HashMap<String, usize> = HashMap::new();
@@ -82,7 +83,7 @@ impl KeyPhraseExtractor {
             content_phrases,
             word_freq,
             word_deg,
-            stop_words: stop_words.unwrap_or(load_default_stopwords()),
+            stop_words,
         };
     }
 
@@ -144,7 +145,7 @@ impl KeyPhraseExtractor {
     /// A vector of strings.
     pub fn get_content_words(&self) -> Vec<String> {
         let str = self.message.as_str();
-        let vec = extract_content_words(&extract_words(str), self.stop_words);
+        let vec = extract_content_words(&extract_words(str), &self.stop_words);
         return vec;
     }
 
@@ -210,7 +211,7 @@ fn extract_words(input: &str) -> Vec<String> {
 /// Returns:
 ///
 /// A vector of strings.
-fn extract_content_words(words: &Vec<String>, stop_words: HashSet<String>) -> Vec<String> {
+fn extract_content_words(words: &Vec<String>, stop_words: &HashSet<String>) -> Vec<String> {
     let mut content_words: Vec<String> = Vec::new();
 
     for word in words {
@@ -240,7 +241,7 @@ fn extract_content_words(words: &Vec<String>, stop_words: HashSet<String>) -> Ve
 /// Returns:
 ///
 /// A vector of vectors of strings.
-fn extract_content_phrases(input: &str, stop_words: HashSet<String>) -> Vec<Vec<String>> {
+fn extract_content_phrases(input: &str, stop_words: &HashSet<String>) -> Vec<Vec<String>> {
     let mut content_phrases: Vec<Vec<String>> = Vec::new();
 
     // Loop over sentences and then commas
